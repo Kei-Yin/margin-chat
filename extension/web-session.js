@@ -10,8 +10,27 @@
   function composer() {
     return [...document.querySelectorAll('#prompt-textarea, textarea[data-id="root"], form [contenteditable="true"]')].find(visible);
   }
-  function sendButton() {
-    return [...document.querySelectorAll('[data-testid="send-button"], button[aria-label="Send prompt"], button[aria-label="发送提示"], button[aria-label="发送消息"]')].find(visible);
+  function sendButton(editor=composer()) {
+    if(!editor)return null;
+    // Search only around the active editor, never a send/share control elsewhere.
+    const form=editor.closest('form');
+    const scopes=[];
+    if(form)scopes.push(form);
+    else for(let p=editor.parentElement,depth=0;p&&depth<6&&p!==document.body;depth++,p=p.parentElement){
+      if(p.matches('main, [role="main"]'))break;
+      scopes.push(p);
+    }
+    const labels=new Set(['send','send prompt','send message','发送','发送提示','发送消息']);
+    for(const scope of scopes){
+      const candidates=[...scope.querySelectorAll('button')].filter(b=>visible(b)&&
+        (b.getAttribute('data-testid')==='send-button'||b.hasAttribute('data-composer-send-button')||
+        labels.has(normalize(b.getAttribute('aria-label')||b.getAttribute('title')||'').toLowerCase())));
+      const ready=candidates.filter(b=>!b.disabled&&b.getAttribute('aria-disabled')!=='true');
+      if(ready.length===1)return ready[0];
+      if(ready.length>1)return null;
+      if(candidates.length===1)return candidates[0];
+    }
+    return null;
   }
   function generating() {
     return [...document.querySelectorAll('[data-testid="stop-button"], button[aria-label="Stop streaming"], button[aria-label="Stop generating"], button[aria-label="停止生成"], button[aria-label="停止流式传输"], [data-is-streaming="true"]')].some(visible);
@@ -41,7 +60,10 @@
       }
       return '正文容器 '+(i+1)+'：\n'+lines.join('\n');
     });
-    return `消息容器 ${turns().length} · 输入框 ${composer()?'已识别':'未识别'} · 发送按钮 ${sendButton()?'已识别':'未识别（空草稿时可能正常）'}\n`+paths.join('\n');
+    const editor=composer();let scope=editor?.closest('form')||editor?.parentElement;
+    if(editor&&!editor.closest('form'))for(let i=0;i<4&&scope?.parentElement&&scope.parentElement!==document.body;i++)scope=scope.parentElement;
+    const buttons=scope?[...scope.querySelectorAll('button')].filter(visible).slice(-12).map(b=>({label:(b.getAttribute('aria-label')||b.getAttribute('title')||'').slice(0,80),testid:b.getAttribute('data-testid'),disabled:!!b.disabled,ariaDisabled:b.getAttribute('aria-disabled')})):[];
+    return `消息容器 ${turns().length} · 输入框 ${editor?'已识别':'未识别'} · 发送按钮 ${sendButton()?'已识别':'未识别（空草稿时可能正常）'}\n输入框附近按钮：${JSON.stringify(buttons)}\n`+paths.join('\n');
   }
   function turnText(turn) {
     const nodes=[...turn.querySelectorAll(BODY)];
@@ -83,12 +105,19 @@
       // Let the editor's own input pipeline update its state (e.g. ProseMirror).
       if(!document.execCommand('insertText',false,prompt))throw Error('无法填入网页输入框，未发送。');
     }
-    await new Promise(r=>setTimeout(r,120));
-    if(location.pathname!==path || !el.isConnected)throw Error('聊天页面已切换，未发送追问。');
-    if(promptKey(el.value??el.innerText??el.textContent)!==promptKey(prompt))throw Error('网页输入框内容校验失败，未发送。请检查主聊天草稿。');
-    const button=sendButton();
-    if(!button || button.disabled || button.getAttribute('aria-disabled')==='true')throw Error('网页发送按钮尚不可用；追问已填入主输入框，可手动发送后自动关联。');
-    button.click();
+    // React/ProseMirror may replace the voice control asynchronously after input.
+    for(let attempt=0;attempt<50;attempt++){
+      await new Promise(r=>setTimeout(r,100));
+      if(location.pathname!==path || !el.isConnected)throw Error('聊天页面已切换，未发送追问。');
+      if(turns().some(t=>promptKey(t.textContent).includes(promptKey(prompt))))return; // already manually sent
+      if(promptKey(el.value??el.innerText??el.textContent)!==promptKey(prompt))throw Error('主聊天草稿已变化，已停止自动发送，请检查输入框。');
+      if(generating())throw Error('网页已开始生成，已停止自动发送以免重复提交。');
+      const button=sendButton(el);
+      if(!button || button.disabled || button.getAttribute('aria-disabled')==='true')continue;
+      button.click();
+      return; // At most one click; never retry an uncertain submission.
+    }
+    throw Error('等待 5 秒仍未找到可用的发送按钮；草稿已保留。请点击「检查选区」，反馈新增的「输入框附近按钮」信息。');
   }
   const folded=new Map();
   function restoreFolds(notes,openNote) {

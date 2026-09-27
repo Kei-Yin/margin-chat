@@ -49,3 +49,26 @@ test('a combined modern turn is split into messages without folding the shared p
   const pair=modernAdapter([wrapper]).findPair(tagged);
   assert.equal(pair.user,user);assert.equal(pair.assistant,answer);assert.equal(pair.text,'Combined answer');
 });
+
+function sendingFixture({label='发送',readyAt=4,editAt=0,navigateAt=0,manualAt=0,ambiguous=false}={}){
+  let ticks=0,clicks=0;const location={pathname:'/c/test'};
+  const button={getClientRects:()=>[{}],closest:()=>null,hasAttribute:()=>false,getAttribute:k=>k==='aria-label'?label:null,get disabled(){return ticks<readyAt;},click(){clicks++;}};
+  const form={querySelectorAll:()=>ambiguous?[button,button]:[button]};
+  const editor={tagName:'DIV',textContent:'',innerText:'',isConnected:true,focus(){},getClientRects:()=>[{}],closest:s=>s==='form'?form:null};
+  const original=turn('assistant','Original answer');let sentPrompt='';
+  const ctx={location,setTimeout:fn=>{ticks++;if(ticks===editAt)editor.innerText='User changed draft';if(ticks===navigateAt)location.pathname='/c/other';fn();},document:{
+    querySelectorAll:s=>s.includes('#prompt-textarea')?[editor]:s.includes('stop-button')?[]:s.includes('article[')?[original,...(manualAt&&ticks>=manualAt?[turn('user',sentPrompt)]:[])]:[],
+    execCommand:(command,unused,text)=>{sentPrompt=text;editor.innerText=text;editor.textContent=text;return true;}
+  }};
+  vm.runInNewContext(source,ctx);return {api:ctx.MarginWeb,get clicks(){return clicks;},get ticks(){return ticks;}};
+}
+test('waits for delayed localized send button and clicks exactly once',async()=>{
+  for(const label of ['发送','Send','Send message']){const f=sendingFixture({label,readyAt:8});await f.api.send('[Margin:test] Question');assert.equal(f.clicks,1);assert.equal(f.ticks,8);}
+});
+test('never clicks voice or ambiguous controls and preserves drafts on timeout',async()=>{
+  for(const options of [{label:'Start voice mode'},{ambiguous:true}]){const f=sendingFixture(options);await assert.rejects(f.api.send('[Margin:test] Question'),/5 秒/);assert.equal(f.clicks,0);}
+});
+test('stops sending when user edits, navigates, or already sent the tagged prompt',async()=>{
+  for(const options of [{editAt:2},{navigateAt:2}]){const f=sendingFixture(options);await assert.rejects(f.api.send('[Margin:test] Question'));assert.equal(f.clicks,0);}
+  const f=sendingFixture({manualAt:2});await f.api.send('[Margin:test] Question');assert.equal(f.clicks,0);
+});

@@ -1,5 +1,5 @@
 {
-  "name": "margin-chat", "private": true, "type": "module", "version": "0.2.4",
+  "name": "margin-chat", "private": true, "type": "module", "version": "0.2.5",
   "scripts": { "start": "node --env-file-if-exists=.env server/index.mjs", "test": "node --test tests/*.test.mjs" },
   "engines": { "node": ">=22" }
 }
