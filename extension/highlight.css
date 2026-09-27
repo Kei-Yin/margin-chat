@@ -1,2 +1,4 @@
 ::highlight(margin-notes) { background-color: #f8df77; color: #29251a; }
 ::highlight(margin-active) { background-color: #f3c344; color: #19160d; }
+.margin-folded-turn { display: none !important; }
+.margin-fold-toggle { display:block; margin:12px auto; padding:9px 16px; border:1px solid #9bbaa6; border-radius:10px; background:#edf4ec; color:#254e40; cursor:pointer; font:13px/1.5 system-ui; }

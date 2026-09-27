@@ -23,7 +23,7 @@ async function ask(id, question) {
   try {
     const {settings = {}} = await chrome.storage.local.get('settings');
     let answer;
-    if (settings.demo) {
+    if (settings.mode==='demo' || (!settings.mode&&settings.demo)) {
       answer = '【演示内容 · 非 AI 回答】\n\n你选中了：“'+note.anchor.quote+'”\n\n这里会显示针对这段原文的解释。你可以继续追问、关闭浮窗，再点击高亮回看。\n\n要获得真实回答，请在扩展设置中关闭演示模式，并连接本机 API 服务。';
     } else {
       if (!settings.token) throw Error('请先点击扩展图标，填写本机服务配对码，或开启演示模式。');
@@ -59,7 +59,30 @@ chrome.runtime.onMessage.addListener((msg,sender,reply) => {
     if (msg.type === 'create') return serial(async () => {
       const n = msg.note;
       if (!n?.anchor?.quote || n.anchor.quote.length > 12000 || !/^\/c\/[\w-]+$/.test(n.conversation)) throw Error('请在已保存的聊天中选择文字（最多 12000 字）。');
-      return put({...n,id:crypto.randomUUID(),messages:[],pending:null,error:'',createdAt:Date.now(),updatedAt:Date.now()});
+      return put({...n,id:crypto.randomUUID(),color:'yellow',webTurns:[],messages:[],pending:null,error:'',createdAt:Date.now(),updatedAt:Date.now()});
+    });
+    if (msg.type === 'webBegin') return serial(async()=>{
+      const n=await get(msg.id);if(!n)throw Error('批注已删除。');
+      if(typeof msg.question!=='string'||!msg.question.trim()||msg.question.length>6000||typeof msg.prompt!=='string'||msg.prompt.length>200000)throw Error('追问格式不正确。');
+      const all=await list(n.conversation);
+      if(all.some(x=>(x.webTurns||[]).some(t=>['waiting','prepared'].includes(t.status)&&Date.now()-t.started<600000)))throw Error('这条聊天还有旁注在等待回答，请先完成或结束等待。');
+      const id=crypto.randomUUID(),marker=msg.marker;
+      if(!/^\[Margin:[a-f0-9-]{36}\]$/.test(marker)||!msg.prompt.startsWith(marker))throw Error('追问标记不正确。');
+      n.webTurns??=[];n.webTurns.push({id,marker,prompt:msg.prompt,question:msg.question,status:'prepared',started:Date.now()});
+      n.messages.push({role:'user',content:msg.question,exchangeId:id});n.error='';n.updatedAt=Date.now();
+      await put(n);return {note:n,exchange:n.webTurns.at(-1)};
+    });
+    if (msg.type === 'webUpdate') return serial(async()=>{
+      const n=await get(msg.id);if(!n)return null;
+      const ex=n.webTurns?.find(x=>x.id===msg.exchangeId);if(!ex)return n;
+      if(['complete','cancelled','failed'].includes(ex.status))return n;
+      if(msg.status==='complete'){
+        if(typeof msg.answer!=='string'||!msg.answer.trim()||msg.answer.length>250000)throw Error('回答为空或过长，原始问答会保留。');
+        ex.answer=msg.answer;ex.status='complete';n.messages.push({role:'assistant',content:msg.answer,exchangeId:ex.id});n.error='';
+      }else if(['waiting','failed','cancelled'].includes(msg.status)){
+        ex.status=msg.status;n.error=String(msg.error||'').slice(0,1000);
+      }else throw Error('状态不正确。');
+      n.updatedAt=Date.now();return put(n);
     });
     if (msg.type === 'ask') return ask(msg.id,msg.question);
     if (msg.type === 'delete') return serial(() => chrome.storage.local.remove(STORE+msg.id));

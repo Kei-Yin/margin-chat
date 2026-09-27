@@ -22,3 +22,21 @@ test('deletion during in-flight request cannot resurrect a note',async()=>{let f
   const second=await send({type:'ask',id:n.id,question:'Duplicate'});assert.equal(second.ok,false);
   await send({type:'delete',id:n.id});finish({ok:true,json:async()=>({text:'Answer'})});await pending;assert.equal((await send({type:'list'})).data.length,0);
 });
+function startWeb(id){const marker='[Margin:'+webcrypto.randomUUID()+']';return {type:'webBegin',id,marker,prompt:marker+'\nquestion',question:'question'};}
+test('web mode serializes a conversation and completes idempotently without fetch',async()=>{
+  const send=worker({},()=>{throw Error('Must never call API');});const a=(await send(make())).data,b=(await send(make())).data;
+  const started=(await send(startWeb(a.id))).data;assert.ok(started.exchange);
+  assert.equal((await send(startWeb(b.id))).ok,false);
+  const complete={type:'webUpdate',id:a.id,exchangeId:started.exchange.id,status:'complete',answer:'web answer'};
+  await send(complete);await send(complete);
+  const saved=(await send({type:'list'})).data.find(n=>n.id===a.id);
+  assert.equal(saved.messages.length,2);assert.equal(saved.webTurns[0].answer,'web answer');
+  assert.equal((await send(startWeb(b.id))).ok,true);
+});
+test('cancelled web turn never receives a stale completion and deletion does not resurrect it',async()=>{
+  const send=worker();const n=(await send(make())).data;const ex=(await send(startWeb(n.id))).data.exchange;
+  await send({type:'webUpdate',id:n.id,exchangeId:ex.id,status:'cancelled'});
+  const late=await send({type:'webUpdate',id:n.id,exchangeId:ex.id,status:'complete',answer:'late'});
+  assert.equal(late.data.messages.length,1);assert.equal(late.data.webTurns[0].status,'cancelled');
+  await send({type:'delete',id:n.id});assert.equal((await send({type:'webUpdate',id:n.id,exchangeId:ex.id,status:'complete',answer:'late'})).data,null);
+});
