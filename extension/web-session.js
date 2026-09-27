@@ -1,7 +1,8 @@
 /* DOM-only ChatGPT integration. No private endpoints, cookies or API credentials. */
 (() => {
   const BODY = '.markdown, .prose, [class^="MarkdownRoot-"], [class*=" MarkdownRoot-"]';
-  const TURN = 'article[data-testid^="conversation-turn"], [data-testid^="conversation-turn-"], [data-turn-id]';
+  const TURN = 'article[data-testid^="conversation-turn"], [data-testid^="conversation-turn-"], [data-turn-id], [data-turn-key], [data-content-search-turn-key]';
+  const MESSAGE = '[data-message-author-role], [data-chatgpt-selection-message-id]';
   const normalize = text => text.replace(/\s+/g,' ').trim();
   // Rich editors render line breaks as blocks; textContent omits those boundaries.
   const promptKey = text => text.replace(/\s+/g,'');
@@ -18,8 +19,14 @@
   function turns() {
     let all = [...document.querySelectorAll(TURN)].filter(n => !n.closest('#margin-root'));
     all = all.filter(n => !all.some(other => other!==n && other.contains(n)));
-    if (!all.length) all=[...document.querySelectorAll('[data-message-author-role]')].filter(n=>!n.closest('#margin-root'));
-    return all;
+    if (!all.length) all=[...document.querySelectorAll(MESSAGE)].filter(n=>!n.closest('#margin-root'));
+    // Some layouts put a user request and its answer in one turn. Keep those
+    // messages separate so answer extraction/folding never consumes a whole pair.
+    return all.flatMap(turn=>{
+      const nested=[...turn.querySelectorAll(MESSAGE)];
+      const messages=nested.filter(n=>!nested.some(other=>other!==n&&other.contains(n)));
+      return messages.length>1?messages:[turn];
+    });
   }
   function diagnostics() {
     // Structural metadata only: do not copy message text, IDs, URLs or input values.

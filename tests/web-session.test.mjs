@@ -18,3 +18,34 @@ test('duplicate requests and intervening user turns are never paired to another 
   assert.equal(adapter([user,turn('user','Unrelated'),answer]).findPair(ex).assistant,undefined);
   assert.equal(adapter([user,turn('assistant',ex.prompt)]).findPair(ex),null);
 });
+
+// Minimal DOM fixture with the attribute hierarchy reported by the live page.
+function element(attrs={},children=[],text=''){
+  const n={attrs,children,textContent:text+children.map(c=>c.textContent).join(''),closest:()=>null};
+  n.contains=target=>children.some(c=>c===target||c.contains(target));
+  n.matches=selector=>selector.split(',').some(s=>{
+    const m=/^\[([\w-]+)(?:="([^"]*)")?\]$/.exec(s.trim());
+    return !!m&&Object.hasOwn(attrs,m[1])&&(m[2]===undefined||attrs[m[1]]===m[2]);
+  });
+  n.querySelectorAll=selector=>children.flatMap(c=>[...(c.matches(selector)?[c]:[]),...c.querySelectorAll(selector)]);
+  n.querySelector=selector=>n.querySelectorAll(selector)[0]||null;
+  return n;
+}
+function modernAdapter(nodes){const doc=element({},nodes);const ctx={document:doc};vm.runInNewContext(source,ctx);return ctx.MarginWeb;}
+const tagged={prompt:'[Margin:fixture] Question',marker:'[Margin:fixture]'};
+const modernMessage=(text,answer=false)=>element({'data-chatgpt-selection-message-id':''},answer?[element({'data-markdown-text-style':'','class':'MarkdownRoot-test'},[],text)]:[],answer?'':text);
+// Model the CSS-module body selector separately from the attribute fixture parser.
+function answerMessage(text){const n=modernMessage(text,true);const base=n.querySelectorAll;n.querySelectorAll=s=>s.includes('MarkdownRoot-')?n.children:base(s);return n;}
+test('modern nested turn keys are deduplicated and their assistant body is associated',()=>{
+  const user=modernMessage(tagged.prompt),answer=answerMessage('Correct answer');
+  const u=element({'data-turn-key':''},[element({'data-content-search-turn-key':''},[user])]);
+  const a=element({'data-turn-key':''},[element({'data-content-search-turn-key':''},[answer])]);
+  const pair=modernAdapter([u,a]).findPair(tagged);
+  assert.equal(pair.user,u);assert.equal(pair.assistant,a);assert.equal(pair.text,'Correct answer');
+});
+test('a combined modern turn is split into messages without folding the shared parent',()=>{
+  const user=modernMessage(tagged.prompt),answer=answerMessage('Combined answer');
+  const wrapper=element({'data-turn-key':''},[element({'data-content-search-turn-key':''},[user,answer])]);
+  const pair=modernAdapter([wrapper]).findPair(tagged);
+  assert.equal(pair.user,user);assert.equal(pair.assistant,answer);assert.equal(pair.text,'Combined answer');
+});

@@ -18,7 +18,7 @@
   <button class="pick" hidden>✦ 追问这段</button>
   <section class="panel" hidden role="dialog" aria-label="Margin 旁注">
     <button class="resize" aria-label="调整窗口大小" title="拖动左上角调整大小；方向键也可调整">◩</button>
-    <header><button id="back" aria-label="返回旁注列表">←</button><div><div class="eyebrow">MARGIN / 旁注 · 0.2.2</div><strong id="title">留住每一次理解</strong></div><div style="flex:1"></div><button id="settings" aria-label="设置">⚙</button><button id="close" aria-label="关闭旁注">✕</button></header>
+    <header><button id="back" aria-label="返回旁注列表">←</button><div><div class="eyebrow">MARGIN / 旁注 · 0.2.3</div><strong id="title">留住每一次理解</strong></div><div style="flex:1"></div><button id="settings" aria-label="设置">⚙</button><button id="close" aria-label="关闭旁注">✕</button></header>
     <div style="padding:8px 18px;border-bottom:1px solid #e4e7df"><button id="ask-selection" class="primary">追问当前选区</button> <button id="diagnose" class="quiet">检查选区</button><div id="diagnostics" class="hint" role="status" style="white-space:pre-wrap;overflow-wrap:anywhere"></div></div>
     <div class="body"></div><form class="composer" hidden><textarea maxlength="6000" placeholder="这段哪里不明白？试着问一个问题…" aria-label="你的追问"></textarea><div class="foot"><span class="hint">Ctrl / ⌘ + Enter 发送</span><button class="primary" type="submit">发送 ↗</button></div></form>
   </section><div class="toast" role="status" hidden></div>`;
@@ -56,7 +56,7 @@
     const safe = [...candidates].filter(n => !n.closest('[data-message-author-role="user"], textarea, input, [contenteditable="true"], #margin-root'));
     return safe.filter(n => !safe.some(other => other !== n && other.contains(n)));
   }
-  function messageId(root) { return root.closest('[data-message-id]')?.getAttribute('data-message-id') || root.querySelector('[data-message-id]')?.getAttribute('data-message-id') || ''; }
+  function messageId(root) { return root.closest('[data-message-id]')?.getAttribute('data-message-id') || root.querySelector('[data-message-id]')?.getAttribute('data-message-id') || root.closest('[data-chatgpt-selection-message-id]')?.getAttribute('data-chatgpt-selection-message-id') || ''; }
   function textNodes(root) { const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); const out=[]; while(w.nextNode()) out.push(w.currentNode); return out; }
   function rangeAt(root,start,end) {
     const r=document.createRange(); let pos=0, begun=false;
@@ -148,7 +148,7 @@
     let el=r?.startContainer; if(el?.nodeType===3)el=el.parentElement;
     const path=[];
     for(let i=0;el&&i<5;i++,el=el.parentElement)path.push(el.tagName.toLowerCase()+Array.from(el.classList||[]).slice(0,3).map(c=>'.'+c).join(''));
-    $('#diagnostics').textContent=`版本 0.2.2 · 正文区块 ${all.length} · 选中字数 ${sel?.toString().length||0}\n选区匹配：${r&&all.some(x=>x.contains(r.startContainer)&&x.contains(r.endContainer))?'是':'否'} · 聊天路径：${conversation?'已识别':'未识别'}\n结构：${path.join(' > ')||'无选区'}`;
+    $('#diagnostics').textContent=`版本 0.2.3 · 正文区块 ${all.length} · 选中字数 ${sel?.toString().length||0}\n选区匹配：${r&&all.some(x=>x.contains(r.startContainer)&&x.contains(r.endContainer))?'是':'否'} · 聊天路径：${conversation?'已识别':'未识别'}\n结构：${path.join(' > ')||'无选区'}`;
     $('#diagnostics').textContent+='\n'+MarginWeb.diagnostics();
     $('#diagnostics').style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;max-height:230px;overflow:auto;user-select:text';
   };
