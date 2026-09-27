@@ -18,7 +18,7 @@
   <button class="pick" hidden>✦ 追问这段</button>
   <section class="panel" hidden role="dialog" aria-label="Margin 旁注">
     <button class="resize" aria-label="调整窗口大小" title="拖动右下角调整大小；方向键也可调整">◢</button>
-    <header title="拖动标题栏移动窗口"><button id="back" aria-label="返回旁注列表">←</button><div><div class="eyebrow">MARGIN / 旁注 · 0.2.5</div><strong id="title">留住每一次理解</strong></div><div style="flex:1"></div><button id="settings" aria-label="设置">⚙</button><button id="close" aria-label="关闭旁注">✕</button></header>
+    <header title="拖动标题栏移动窗口"><button id="back" aria-label="返回旁注列表">←</button><div><div class="eyebrow">MARGIN / 旁注 · 0.2.6</div><strong id="title">留住每一次理解</strong></div><div style="flex:1"></div><button id="settings" aria-label="设置">⚙</button><button id="close" aria-label="关闭旁注">✕</button></header>
     <div style="padding:8px 18px;border-bottom:1px solid #e4e7df"><button id="ask-selection" class="primary">追问当前选区</button> <button id="diagnose" class="quiet">检查选区</button><div id="diagnostics" class="hint" role="status" style="white-space:pre-wrap;overflow-wrap:anywhere"></div></div>
     <div class="body"></div><form class="composer" hidden><textarea maxlength="6000" placeholder="这段哪里不明白？试着问一个问题…" aria-label="你的追问"></textarea><div class="foot"><span class="hint">Ctrl / ⌘ + Enter 发送</span><button class="primary" type="submit">发送 ↗</button></div></form>
   </section><div class="toast" role="status" hidden></div>`;
@@ -127,6 +127,19 @@
         try{await rpc('webCollect',{id:n.id,exchangeId:ex.id,status:'complete',answer:pair.text});await refresh();}catch(e){toast(e.message);}};
       body.append(recover);
     }
+    for(const ex of n.webTurns||[]){
+      if(ex.status==='complete')continue;
+      const importSelection=node('button','quiet','收录选中的回答文字：'+ex.question.slice(0,35));
+      importSelection.onmousedown=e=>e.preventDefault();
+      importSelection.onclick=async()=>{
+        const sel=getSelection(),range=sel?.rangeCount?sel.getRangeAt(0):null;
+        if(!range||sel.isCollapsed||!roots().some(root=>root.contains(range.startContainer)&&root.contains(range.endContainer))){toast('请先在网页回答正文中选中要保存的文字，再点击此按钮。');return;}
+        const answer=range.toString().trim();if(!answer||answer.length>250000){toast('请选择 1 至 250000 字的回答正文。');return;}
+        if(MarginWeb.generating()){toast('请等待网页回答生成结束后再收录。');return;}
+        try{await rpc('webCollect',{id:n.id,exchangeId:ex.id,status:'complete',answer});getSelection()?.removeAllRanges();selectionState();await refresh();toast('已保存选中文字；只有自动关联完全匹配时才折叠网页原始问答。');}catch(e){toast(e.message);}
+      };
+      body.append(importSelection);
+    }
     const del=node('button','quiet','删除这条旁注');del.onclick=async()=>{if(!confirm('删除这条旁注及其全部追问？'))return;try{await rpc('delete',{id:n.id});notes=notes.filter(x=>x.id!==n.id);drafts.delete(n.id);active=null;showList();}catch(e){toast(e.message);}};body.append(del);
     form.querySelector('button').disabled=!!pending; input.disabled=!!pending;body.scrollTop=body.scrollHeight;
   }
@@ -171,7 +184,7 @@
     let el=r?.startContainer; if(el?.nodeType===3)el=el.parentElement;
     const path=[];
     for(let i=0;el&&i<5;i++,el=el.parentElement)path.push(el.tagName.toLowerCase()+Array.from(el.classList||[]).slice(0,3).map(c=>'.'+c).join(''));
-    $('#diagnostics').textContent=`版本 0.2.5 · 正文区块 ${all.length} · 选中字数 ${sel?.toString().length||0}\n选区匹配：${r&&all.some(x=>x.contains(r.startContainer)&&x.contains(r.endContainer))?'是':'否'} · 聊天路径：${conversation?'已识别':'未识别'}\n结构：${path.join(' > ')||'无选区'}`;
+    $('#diagnostics').textContent=`版本 0.2.6 · 正文区块 ${all.length} · 选中字数 ${sel?.toString().length||0}\n选区匹配：${r&&all.some(x=>x.contains(r.startContainer)&&x.contains(r.endContainer))?'是':'否'} · 聊天路径：${conversation?'已识别':'未识别'}\n结构：${path.join(' > ')||'无选区'}`;
     $('#diagnostics').textContent+='\n'+MarginWeb.diagnostics();
     $('#diagnostics').style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;max-height:230px;overflow:auto;user-select:text';
   };

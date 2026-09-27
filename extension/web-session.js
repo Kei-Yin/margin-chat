@@ -72,11 +72,14 @@
   }
   function findPair(exchange) {
     const all=turns();
-    const matching=all.filter(n=>promptKey(n.textContent).includes(promptKey(exchange.prompt)));
+    // The UUID survives rendered line breaks, markdown and collapsed long prompts.
+    // Require exactly one occurrence across messages; never guess on duplicate markers.
+    if(!exchange.marker)return null;
+    const matching=all.filter(n=>n.textContent.includes(exchange.marker));
     if(matching.length!==1)return null;
     const user=matching[0],next=all[all.indexOf(user)+1];
     if(!next || next.matches('[data-message-author-role="user"]') || next.querySelector('[data-message-author-role="user"]'))return {user};
-    if(!next.matches('[data-message-author-role="assistant"]')&&!next.querySelector('[data-message-author-role="assistant"]')&&!next.querySelector(BODY))return {user};
+    if(!next.matches('[data-message-author-role="assistant"]')&&!next.querySelector('[data-message-author-role="assistant"]')&&!next.matches(BODY)&&!next.querySelector(BODY))return {user};
     // Never associate an answer that itself repeats the full tagged request.
     const text=turnText(next).trim();
     return text.includes(exchange.marker)?{user}:{user,assistant:next,text};

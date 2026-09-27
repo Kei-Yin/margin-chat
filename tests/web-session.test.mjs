@@ -18,6 +18,14 @@ test('duplicate requests and intervening user turns are never paired to another 
   assert.equal(adapter([user,turn('user','Unrelated'),answer]).findPair(ex).assistant,undefined);
   assert.equal(adapter([user,turn('assistant',ex.prompt)]).findPair(ex),null);
 });
+test('unique tracking marker associates a rendered prompt even if its body formatting changed',()=>{
+  const exchange={prompt:'[Margin:unique] **Original prompt**',marker:'[Margin:unique]'};
+  const user=turn('user','[Margin:unique] Original prompt …'),answer=turn('assistant','Complete answer');
+  const pair=adapter([user,answer]).findPair(exchange);
+  assert.equal(pair.user,user);assert.equal(pair.text,'Complete answer');
+  assert.equal(adapter([user,turn('user','[Margin:unique] Duplicate'),answer]).findPair(exchange),null);
+  assert.equal(adapter([user,answer]).findPair({...exchange,marker:''}),null);
+});
 
 // Minimal DOM fixture with the attribute hierarchy reported by the live page.
 function element(attrs={},children=[],text=''){
