@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Margin · ChatGPT 旁注",
+  "version": "0.1.1",
+  "description": "选中文字，在独立浮窗中追问；高亮保存，让主对话保持清晰。",
+  "permissions": ["storage"],
+  "host_permissions": ["http://127.0.0.1:43127/*"],
+  "background": {"service_worker": "background.js"},
+  "action": {"default_title": "Margin 设置与备份", "default_popup": "options.html"},
+  "options_page": "options.html",
+  "content_scripts": [{
+    "matches": ["https://chatgpt.com/*"],
+    "js": ["core.js", "content.js"], "css": ["highlight.css"], "run_at": "document_idle"
+  }]
+}

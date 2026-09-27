@@ -1,0 +1,5 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Margin · 设置</title><link rel="stylesheet" href="options.css"></head><body>
+<main><div class="brand">✦ MARGIN / 旁注</div><h1>把疑问，留在原文旁。</h1><p>选中 ChatGPT 回答里的文字，开启一段独立追问。</p>
+<section><h2>连接与体验</h2><label class="check"><input id="demo" type="checkbox">演示模式（固定示例，不调用 AI）</label><label for="token">本机服务配对码</label><input id="token" type="password" autocomplete="off" placeholder="粘贴 npm start 显示的配对码"><p class="muted">配对码仅用于连接本机服务，不是 OpenAI API 密钥。真实回答需要在本机 .env 文件中配置密钥和模型。</p><button id="save">保存设置</button><button id="health" class="secondary">检查服务</button><div id="status" role="status"></div></section>
+<section><h2>你的批注</h2><p id="stats">读取中…</p><button id="export" class="secondary">导出 JSON 备份</button><p class="muted">批注保存在当前浏览器配置文件内。禁用扩展不会删除记录；卸载扩展可能清除数据，请先导出。此版本不含云同步或 Windows 客户端集成。</p></section>
+<footer>发送追问时，仅提交所选片段、附近上下文与该批注的问答历史。主聊天不会新增消息。</footer></main><script src="options.js"></script></body></html>
