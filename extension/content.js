@@ -16,7 +16,8 @@
   <button class="launcher" aria-label="打开当前聊天的旁注">✦ 旁注 <span id="count">0</span></button>
   <button class="pick" hidden>✦ 追问这段</button>
   <section class="panel" hidden role="dialog" aria-label="Margin 旁注">
-    <header><button id="back" aria-label="返回旁注列表">←</button><div><div class="eyebrow">MARGIN / 旁注</div><strong id="title">留住每一次理解</strong></div><div style="flex:1"></div><button id="settings" aria-label="设置">⚙</button><button id="close" aria-label="关闭旁注">✕</button></header>
+    <header><button id="back" aria-label="返回旁注列表">←</button><div><div class="eyebrow">MARGIN / 旁注 · 0.1.3</div><strong id="title">留住每一次理解</strong></div><div style="flex:1"></div><button id="settings" aria-label="设置">⚙</button><button id="close" aria-label="关闭旁注">✕</button></header>
+    <div style="padding:8px 18px;border-bottom:1px solid #e4e7df"><button id="ask-selection" class="primary">追问当前选区</button> <button id="diagnose" class="quiet">检查选区</button><div id="diagnostics" class="hint" role="status" style="white-space:pre-wrap;overflow-wrap:anywhere"></div></div>
     <div class="body"></div><form class="composer" hidden><textarea maxlength="6000" placeholder="这段哪里不明白？试着问一个问题…" aria-label="你的追问"></textarea><div class="foot"><span class="hint">Ctrl / ⌘ + Enter 发送</span><button class="primary" type="submit">发送 ↗</button></div></form>
   </section><div class="toast" role="status" hidden></div>`;
   const $ = s => shadow.querySelector(s);
@@ -29,12 +30,16 @@
   function roots() {
     // A reply can have several Markdown blocks; never assume only the first one is the answer.
     const candidates = new Set();
+    const bodySelector = '.markdown, .prose, [class^="MarkdownRoot-"], [class*=" MarkdownRoot-"]';
     for (const message of document.querySelectorAll('[data-message-author-role="assistant"]')) {
-      const blocks = message.querySelectorAll('.markdown, .prose');
+      const blocks = message.querySelectorAll(bodySelector);
       for (const block of blocks.length ? blocks : [message]) candidates.add(block);
     }
     // Some ChatGPT layouts omit the author attribute on the rendered answer.
     for (const block of document.querySelectorAll('main .markdown, main .prose, [role="main"] .markdown, [role="main"] .prose')) candidates.add(block);
+    // Observed in the user's ChatGPT DOM: CSS-module MarkdownRoot-* without author metadata.
+    // Match a class token prefix, not an arbitrary substring or a build-specific hash.
+    for (const block of document.querySelectorAll('[class^="MarkdownRoot-"], [class*=" MarkdownRoot-"]')) candidates.add(block);
     const safe = [...candidates].filter(n => !n.closest('[data-message-author-role="user"], textarea, input, [contenteditable="true"], #margin-root'));
     return safe.filter(n => !safe.some(other => other !== n && other.contains(n)));
   }
@@ -93,8 +98,9 @@
     $('.launcher').setAttribute('aria-label',note?'追问选中文字':'打开当前聊天的旁注');
   }
   function capture(explain=false){
-    // Preserve the source selection while the user interacts with our own floating UI.
-    if (document.activeElement===host) return false;
+    // Focus can remain in the panel even after the user selects non-focusable page text.
+    // Only ignore selections actually inside our shadow root, not all host focus.
+    if (getSelection()?.anchorNode?.getRootNode()===shadow) return false;
     const fail=message=>{selectionState();if(explain)toast(message);return false;};
     const sel=getSelection();if(!sel?.rangeCount||sel.isCollapsed)return fail('请先选中一段 ChatGPT 回答文字。');
     const r=sel.getRangeAt(0); const root=roots().find(x=>x.contains(r.startContainer)&&x.contains(r.endContainer));
@@ -114,6 +120,16 @@
   document.addEventListener('keyup',e=>{if(e.key==='Shift')scheduleCapture();},true);
   async function createSelected(){if(!selected)return;const chosen=selected;selectionState();try{const n=await rpc('create',{note:chosen});if(chosen.conversation!==conversation)return;notes=notes.filter(x=>x.id!==n.id);notes.unshift(n);getSelection()?.removeAllRanges();openNote(n.id);}catch(e){toast(e.message);}}
   picker.onmousedown=e=>e.preventDefault();picker.onclick=createSelected;
+  $('#ask-selection').onmousedown=e=>e.preventDefault();
+  $('#ask-selection').onclick=()=>{if(capture(true))createSelected();};
+  $('#diagnose').onmousedown=e=>e.preventDefault();
+  $('#diagnose').onclick=()=>{
+    const sel=getSelection(),r=sel?.rangeCount?sel.getRangeAt(0):null,all=roots();
+    let el=r?.startContainer; if(el?.nodeType===3)el=el.parentElement;
+    const path=[];
+    for(let i=0;el&&i<5;i++,el=el.parentElement)path.push(el.tagName.toLowerCase()+Array.from(el.classList||[]).slice(0,3).map(c=>'.'+c).join(''));
+    $('#diagnostics').textContent=`版本 0.1.3 · 正文区块 ${all.length} · 选中字数 ${sel?.toString().length||0}\n选区匹配：${r&&all.some(x=>x.contains(r.startContainer)&&x.contains(r.endContainer))?'是':'否'} · 聊天路径：${conversation?'已识别':'未识别'}\n结构：${path.join(' > ')||'无选区'}`;
+  };
   document.addEventListener('keydown',e=>{if(e.altKey&&e.shiftKey&&e.code==='KeyM'&&!e.repeat){e.preventDefault();if(capture(true))createSelected();}},true);
   document.addEventListener('click',e=>{if(e.composedPath().includes(host)||getSelection()?.toString())return;for(const hit of ranges){if([...hit.range.getClientRects()].some(r=>e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom)){e.preventDefault();openNote(hit.id);break;}}});
   $('.launcher').onmousedown=e=>e.preventDefault();
