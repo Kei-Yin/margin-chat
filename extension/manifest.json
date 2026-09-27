@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Margin · ChatGPT 旁注",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "选中文字，在独立浮窗中追问；高亮保存，让主对话保持清晰。",
   "permissions": ["storage"],
   "host_permissions": ["http://127.0.0.1:43127/*"],

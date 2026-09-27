@@ -1,4 +1,10 @@
 (() => {
+  function conversationKey(pathname) {
+    // A saved chat can be reached directly or through a project/custom GPT.
+    // Store by chat ID so both routes restore the same annotations.
+    const match = /^\/(?:g\/[^/]+\/)?c\/([\w-]+)\/?$/.exec(pathname);
+    return match ? '/c/' + match[1] : '';
+  }
   function locate(text, anchor) {
     if (!anchor.quote) return null;
     const hits = [];
@@ -19,5 +25,5 @@
     return (data.output || []).filter(x => x.type === 'message').flatMap(x => x.content || [])
       .filter(x => x.type === 'output_text').map(x => x.text).join('\n');
   }
-  globalThis.MarginCore = {locate, makeAnchor, responseText};
+  globalThis.MarginCore = {locate, makeAnchor, responseText, conversationKey};
 })();
