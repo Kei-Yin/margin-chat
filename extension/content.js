@@ -18,7 +18,7 @@
   <button class="pick" hidden>✦ 追问这段</button>
   <section class="panel" hidden role="dialog" aria-label="Margin 旁注">
     <button class="resize" aria-label="调整窗口大小" title="拖动右下角调整大小；方向键也可调整">◢</button>
-    <header title="拖动标题栏移动窗口"><button id="back" aria-label="返回旁注列表">←</button><div><div class="eyebrow">MARGIN / 旁注 · 0.2.6</div><strong id="title">留住每一次理解</strong></div><div style="flex:1"></div><button id="settings" aria-label="设置">⚙</button><button id="close" aria-label="关闭旁注">✕</button></header>
+    <header title="拖动标题栏移动窗口"><button id="back" aria-label="返回旁注列表">←</button><div><div class="eyebrow">MARGIN / 旁注 · 0.2.7</div><strong id="title">留住每一次理解</strong></div><div style="flex:1"></div><button id="settings" aria-label="设置">⚙</button><button id="close" aria-label="关闭旁注">✕</button></header>
     <div style="padding:8px 18px;border-bottom:1px solid #e4e7df"><button id="ask-selection" class="primary">追问当前选区</button> <button id="diagnose" class="quiet">检查选区</button><div id="diagnostics" class="hint" role="status" style="white-space:pre-wrap;overflow-wrap:anywhere"></div></div>
     <div class="body"></div><form class="composer" hidden><textarea maxlength="6000" placeholder="这段哪里不明白？试着问一个问题…" aria-label="你的追问"></textarea><div class="foot"><span class="hint">Ctrl / ⌘ + Enter 发送</span><button class="primary" type="submit">发送 ↗</button></div></form>
   </section><div class="toast" role="status" hidden></div>`;
@@ -32,13 +32,14 @@
   function place(el,x,y){const r=el.getBoundingClientRect();el.style.left=Math.max(8,Math.min(innerWidth-r.width-8,x))+'px';el.style.top=Math.max(8,Math.min(innerHeight-r.height-8,y))+'px';el.style.right='auto';el.style.bottom='auto';}
   function setSize(width,height){panel.style.width=Math.min(Math.max(320,width),innerWidth-24)+'px';panel.style.height=Math.min(Math.max(350,height),innerHeight-24)+'px';if(panel.style.left&&!panel.hidden){const r=panel.getBoundingClientRect();place(panel,r.left,r.top);}}
   chrome.storage.local.get('panelSize').then(({panelSize:s})=>{if(s)setSize(s.width,s.height);}).catch(()=>{});
-  function saveSize(){const r=panel.getBoundingClientRect();chrome.storage.local.set({panelSize:{width:r.width,height:r.height}}).catch(e=>toast(e.message));}
+  async function saveLocal(values){try{await chrome.storage.local.set(values);}catch(e){toast(/context invalidated/i.test(e.message)?'扩展已更新，请刷新 ChatGPT 页面后继续使用。':e.message);}}
+  function saveSize(){const r=panel.getBoundingClientRect();saveLocal({panelSize:{width:r.width,height:r.height}});}
   $('.resize').onpointerdown=e=>{e.preventDefault();const r=panel.getBoundingClientRect();place(panel,r.left,r.top);const start={x:e.clientX,y:e.clientY,w:r.width,h:r.height};const handle=e.currentTarget;handle.setPointerCapture(e.pointerId);
     handle.onpointermove=e=>setSize(start.w+e.clientX-start.x,start.h+e.clientY-start.y);
     handle.onpointerup=()=>{handle.onpointermove=null;saveSize();savePosition(panel,'panelPosition');};handle.onpointercancel=()=>{handle.onpointermove=null;saveSize();savePosition(panel,'panelPosition');};
   };
   $('.resize').onkeydown=e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();setSize(panel.offsetWidth+(e.key==='ArrowLeft'?20:e.key==='ArrowRight'?-20:0),panel.offsetHeight+(e.key==='ArrowUp'?20:e.key==='ArrowDown'?-20:0));saveSize();};
-  function savePosition(el,key){const r=el.getBoundingClientRect();chrome.storage.local.set({[key]:{x:r.left,y:r.top}}).catch(e=>toast(e.message));}
+  function savePosition(el,key){const r=el.getBoundingClientRect();saveLocal({[key]:{x:r.left,y:r.top}});}
   function draggable(handle,el,key){let suppress=false;
     handle.addEventListener('click',e=>{if(suppress){e.preventDefault();e.stopImmediatePropagation();suppress=false;}},true);
     handle.addEventListener('pointerdown',e=>{if(e.button!==0||(handle!==el&&e.target.closest('button')))return;
@@ -184,7 +185,7 @@
     let el=r?.startContainer; if(el?.nodeType===3)el=el.parentElement;
     const path=[];
     for(let i=0;el&&i<5;i++,el=el.parentElement)path.push(el.tagName.toLowerCase()+Array.from(el.classList||[]).slice(0,3).map(c=>'.'+c).join(''));
-    $('#diagnostics').textContent=`版本 0.2.6 · 正文区块 ${all.length} · 选中字数 ${sel?.toString().length||0}\n选区匹配：${r&&all.some(x=>x.contains(r.startContainer)&&x.contains(r.endContainer))?'是':'否'} · 聊天路径：${conversation?'已识别':'未识别'}\n结构：${path.join(' > ')||'无选区'}`;
+    $('#diagnostics').textContent=`版本 0.2.7 · 正文区块 ${all.length} · 选中字数 ${sel?.toString().length||0}\n选区匹配：${r&&all.some(x=>x.contains(r.startContainer)&&x.contains(r.endContainer))?'是':'否'} · 聊天路径：${conversation?'已识别':'未识别'}\n结构：${path.join(' > ')||'无选区'}`;
     $('#diagnostics').textContent+='\n'+MarginWeb.diagnostics();
     $('#diagnostics').style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;max-height:230px;overflow:auto;user-select:text';
   };

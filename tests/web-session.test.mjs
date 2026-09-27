@@ -57,6 +57,14 @@ test('a combined modern turn is split into messages without folding the shared p
   const pair=modernAdapter([wrapper]).findPair(tagged);
   assert.equal(pair.user,user);assert.equal(pair.assistant,answer);assert.equal(pair.text,'Combined answer');
 });
+test('a user search unit without author or selection metadata is separated from its answer',()=>{
+  const user=element({'data-content-search-unit-key':''},[element({},[],tagged.prompt)]);
+  const answer=element({'data-content-search-unit-key':''},[answerMessage('Answer in same turn')]);
+  const wrapper=element({'data-turn-key':''},[element({'data-content-search-turn-key':''},[user,answer])]);
+  const pair=modernAdapter([wrapper]).findPair(tagged);
+  assert.equal(pair.user,user);assert.equal(pair.assistant,answer);assert.equal(pair.text,'Answer in same turn');
+  assert.notEqual(pair.user,wrapper);
+});
 
 function sendingFixture({label='发送',readyAt=4,editAt=0,navigateAt=0,manualAt=0,ambiguous=false}={}){
   let ticks=0,clicks=0;const location={pathname:'/c/test'};

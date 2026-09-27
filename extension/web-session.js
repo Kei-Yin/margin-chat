@@ -2,7 +2,7 @@
 (() => {
   const BODY = '.markdown, .prose, [class^="MarkdownRoot-"], [class*=" MarkdownRoot-"]';
   const TURN = 'article[data-testid^="conversation-turn"], [data-testid^="conversation-turn-"], [data-turn-id], [data-turn-key], [data-content-search-turn-key]';
-  const MESSAGE = '[data-message-author-role], [data-chatgpt-selection-message-id]';
+  const MESSAGE = '[data-message-author-role], [data-chatgpt-selection-message-id], [data-content-search-unit-key]';
   const normalize = text => text.replace(/\s+/g,' ').trim();
   // Rich editors render line breaks as blocks; textContent omits those boundaries.
   const promptKey = text => text.replace(/\s+/g,'');
