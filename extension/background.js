@@ -72,13 +72,17 @@ chrome.runtime.onMessage.addListener((msg,sender,reply) => {
       n.messages.push({role:'user',content:msg.question,exchangeId:id});n.error='';n.updatedAt=Date.now();
       await put(n);return {note:n,exchange:n.webTurns.at(-1)};
     });
-    if (msg.type === 'webUpdate') return serial(async()=>{
+    if (msg.type === 'webUpdate' || msg.type === 'webCollect') return serial(async()=>{
       const n=await get(msg.id);if(!n)return null;
       const ex=n.webTurns?.find(x=>x.id===msg.exchangeId);if(!ex)return n;
-      if(['complete','cancelled','failed'].includes(ex.status))return n;
+      if(ex.status==='complete')return n;
+      if(['cancelled','failed'].includes(ex.status)&&msg.type!=='webCollect')return n;
+      if(msg.type==='webCollect'&&msg.status!=='complete')throw Error('仅支持收录已完成回答。');
       if(msg.status==='complete'){
         if(typeof msg.answer!=='string'||!msg.answer.trim()||msg.answer.length>250000)throw Error('回答为空或过长，原始问答会保留。');
-        ex.answer=msg.answer;ex.status='complete';n.messages.push({role:'assistant',content:msg.answer,exchangeId:ex.id});n.error='';
+        ex.answer=msg.answer;ex.status='complete';
+        const index=n.messages.findIndex(m=>m.role==='user'&&m.exchangeId===ex.id);
+        n.messages.splice(index<0?n.messages.length:index+1,0,{role:'assistant',content:msg.answer,exchangeId:ex.id});n.error='';
       }else if(['waiting','failed','cancelled'].includes(msg.status)){
         ex.status=msg.status;n.error=String(msg.error||'').slice(0,1000);
       }else throw Error('状态不正确。');

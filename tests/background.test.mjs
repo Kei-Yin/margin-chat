@@ -23,6 +23,15 @@ test('deletion during in-flight request cannot resurrect a note',async()=>{let f
   await send({type:'delete',id:n.id});finish({ok:true,json:async()=>({text:'Answer'})});await pending;assert.equal((await send({type:'list'})).data.length,0);
 });
 function startWeb(id){const marker='[Margin:'+webcrypto.randomUUID()+']';return {type:'webBegin',id,marker,prompt:marker+'\nquestion',question:'question'};}
+test('explicit collection recovers cancelled turns once and inserts answers next to their questions',async()=>{
+  const send=worker();const n=(await send(make())).data;const first=(await send(startWeb(n.id))).data.exchange;
+  await send({type:'webUpdate',id:n.id,exchangeId:first.id,status:'cancelled'});
+  await send(startWeb(n.id));
+  const collect={type:'webCollect',id:n.id,exchangeId:first.id,status:'complete',answer:'Recovered answer'};
+  await send(collect);const saved=(await send(collect)).data;
+  assert.equal(saved.messages.length,3);assert.equal(saved.messages[1].content,'Recovered answer');assert.equal(saved.messages[2].role,'user');
+  await send({type:'delete',id:n.id});assert.equal((await send(collect)).data,null);
+});
 test('web mode serializes a conversation and completes idempotently without fetch',async()=>{
   const send=worker({},()=>{throw Error('Must never call API');});const a=(await send(make())).data,b=(await send(make())).data;
   const started=(await send(startWeb(a.id))).data;assert.ok(started.exchange);

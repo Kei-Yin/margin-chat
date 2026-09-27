@@ -14,7 +14,7 @@
     return [...document.querySelectorAll('[data-testid="send-button"], button[aria-label="Send prompt"], button[aria-label="发送提示"], button[aria-label="发送消息"]')].find(visible);
   }
   function generating() {
-    return [...document.querySelectorAll('[data-testid="stop-button"], button[aria-label="Stop streaming"], button[aria-label="停止生成"], [data-is-streaming="true"]')].some(visible);
+    return [...document.querySelectorAll('[data-testid="stop-button"], button[aria-label="Stop streaming"], button[aria-label="Stop generating"], button[aria-label="停止生成"], button[aria-label="停止流式传输"], [data-is-streaming="true"]')].some(visible);
   }
   function turns() {
     let all = [...document.querySelectorAll(TURN)].filter(n => !n.closest('#margin-root'));
@@ -67,7 +67,7 @@
     return el;
   }
   function hasCompletionSignal(pair) {
-    return !!pair?.assistant && (pair.assistant.matches('[data-message-status="finished"]') || !!pair.assistant.querySelector('[data-message-status="finished"], [data-testid="copy-turn-action-button"], [data-testid="good-response-turn-action-button"]'));
+    return !!pair?.assistant && (pair.assistant.matches('[data-message-status="finished"]') || !!pair.assistant.querySelector('[data-message-status="finished"], [data-testid="copy-turn-action-button"], [data-testid="good-response-turn-action-button"], button[aria-label="Copy response"], button[aria-label="复制回复"], button[aria-label="Good response"], button[aria-label="好评"]'));
   }
   function makePrompt(note,question,marker) {
     const history=note.messages.slice(-12).map(m=>(m.role==='user'?'我':'助手')+'：'+m.content).join('\n');

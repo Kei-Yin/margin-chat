@@ -10,15 +10,15 @@
     .launcher{position:fixed;right:24px;bottom:26px;background:#254e40;color:white;border-radius:24px;padding:12px 20px;box-shadow:0 5px 24px #0002;z-index:2147483646}
     .pick{position:fixed;z-index:2147483647;background:#254e40;color:#fff;border-radius:10px;padding:9px 16px;box-shadow:0 4px 20px #0003}
     .panel{position:fixed;right:24px;bottom:84px;width:440px;max-width:calc(100vw - 24px);height:650px;max-height:calc(100dvh - 108px);background:#fcfbf7;border:1px solid #dce1d8;border-radius:20px;box-shadow:0 16px 70px #122a2630;z-index:2147483647;display:flex;flex-direction:column;overflow:hidden}
-    .resize{position:absolute;left:0;top:0;width:20px;height:20px;cursor:nwse-resize;touch-action:none;color:#789783;background:transparent;z-index:2}.body{min-height:0}header,.composer{flex-shrink:0}
+    .resize{position:absolute;right:0;bottom:0;width:24px;height:24px;cursor:nwse-resize;touch-action:none;color:#789783;background:transparent;z-index:2}header{cursor:move;touch-action:none;user-select:none}.launcher{touch-action:none;cursor:grab}.body{min-height:0}header,.composer{flex-shrink:0}
     [hidden]{display:none!important}header{display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid #e4e7df}header strong{font-size:17px;flex:1}header button,.quiet{background:transparent;color:#53645b;padding:5px 7px;border-radius:7px}.eyebrow{font-size:10px;letter-spacing:2px;color:#6c8074}.body{flex:1;overflow:auto;padding:20px;overscroll-behavior:contain}.quote{border-left:3px solid #e8c751;background:#f7f0d7;padding:12px 14px;border-radius:0 8px 8px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:130px;overflow:auto;margin-bottom:18px}.hint{color:#758278;font-size:12px}.empty{padding:28px 5px;color:#6a7a70}.empty b{display:block;font-size:20px;color:#2b4d3e;margin:10px 0}.message{margin:18px 0;white-space:pre-wrap;overflow-wrap:anywhere}.message.user{background:#eaf0e8;border-radius:12px;padding:12px}.role{font-size:11px;color:#7b877d;margin-bottom:4px;letter-spacing:1px}.error{color:#9b422c;background:#f9e9df;padding:10px;border-radius:8px;font-size:12px;white-space:pre-wrap}.composer{padding:14px 18px 18px;border-top:1px solid #e4e7df}textarea{width:100%;resize:none;background:#fff;border:1px solid #d9dfd5;border-radius:10px;padding:10px;color:#23352f;min-height:74px}.foot{display:flex;align-items:center;justify-content:space-between;margin-top:9px}.primary{background:#254e40;color:#fff;border-radius:9px;padding:8px 15px}.card{display:block;width:100%;text-align:left;background:white;border:1px solid #e0e4da;border-radius:12px;padding:14px;margin:10px 0;color:#304839}.card:hover{border-color:#b4c2ae}.card strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.card span{font-size:12px;color:#7a877c}.search{width:100%;border:1px solid #d9dfd5;border-radius:9px;background:white;padding:9px;color:#23352f}.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#263e34;color:white;border-radius:10px;padding:12px 20px;z-index:2147483647;max-width:90vw}
     @media(max-width:500px){.panel{right:12px;bottom:76px}.launcher{right:12px;bottom:18px}}
   </style>
   <button class="launcher" aria-label="打开当前聊天的旁注">✦ 旁注 <span id="count">0</span></button>
   <button class="pick" hidden>✦ 追问这段</button>
   <section class="panel" hidden role="dialog" aria-label="Margin 旁注">
-    <button class="resize" aria-label="调整窗口大小" title="拖动左上角调整大小；方向键也可调整">◩</button>
-    <header><button id="back" aria-label="返回旁注列表">←</button><div><div class="eyebrow">MARGIN / 旁注 · 0.2.3</div><strong id="title">留住每一次理解</strong></div><div style="flex:1"></div><button id="settings" aria-label="设置">⚙</button><button id="close" aria-label="关闭旁注">✕</button></header>
+    <button class="resize" aria-label="调整窗口大小" title="拖动右下角调整大小；方向键也可调整">◢</button>
+    <header title="拖动标题栏移动窗口"><button id="back" aria-label="返回旁注列表">←</button><div><div class="eyebrow">MARGIN / 旁注 · 0.2.4</div><strong id="title">留住每一次理解</strong></div><div style="flex:1"></div><button id="settings" aria-label="设置">⚙</button><button id="close" aria-label="关闭旁注">✕</button></header>
     <div style="padding:8px 18px;border-bottom:1px solid #e4e7df"><button id="ask-selection" class="primary">追问当前选区</button> <button id="diagnose" class="quiet">检查选区</button><div id="diagnostics" class="hint" role="status" style="white-space:pre-wrap;overflow-wrap:anywhere"></div></div>
     <div class="body"></div><form class="composer" hidden><textarea maxlength="6000" placeholder="这段哪里不明白？试着问一个问题…" aria-label="你的追问"></textarea><div class="foot"><span class="hint">Ctrl / ⌘ + Enter 发送</span><button class="primary" type="submit">发送 ↗</button></div></form>
   </section><div class="toast" role="status" hidden></div>`;
@@ -29,14 +29,28 @@
   const observed = new Map();
   let reconciling=false;
   function mode(settings){return settings?.mode||'web';}
-  function setSize(width,height){panel.style.width=Math.max(320,Math.min(innerWidth-36,width))+'px';panel.style.height=Math.max(350,Math.min(innerHeight-108,height))+'px';}
+  function place(el,x,y){const r=el.getBoundingClientRect();el.style.left=Math.max(8,Math.min(innerWidth-r.width-8,x))+'px';el.style.top=Math.max(8,Math.min(innerHeight-r.height-8,y))+'px';el.style.right='auto';el.style.bottom='auto';}
+  function setSize(width,height){panel.style.width=Math.min(Math.max(320,width),innerWidth-24)+'px';panel.style.height=Math.min(Math.max(350,height),innerHeight-24)+'px';if(panel.style.left&&!panel.hidden){const r=panel.getBoundingClientRect();place(panel,r.left,r.top);}}
   chrome.storage.local.get('panelSize').then(({panelSize:s})=>{if(s)setSize(s.width,s.height);}).catch(()=>{});
   function saveSize(){const r=panel.getBoundingClientRect();chrome.storage.local.set({panelSize:{width:r.width,height:r.height}}).catch(e=>toast(e.message));}
-  $('.resize').onpointerdown=e=>{e.preventDefault();const start={x:e.clientX,y:e.clientY,w:panel.offsetWidth,h:panel.offsetHeight};const handle=e.currentTarget;handle.setPointerCapture(e.pointerId);
-    handle.onpointermove=e=>setSize(start.w+start.x-e.clientX,start.h+start.y-e.clientY);
-    handle.onpointerup=()=>{handle.onpointermove=null;saveSize();};handle.onpointercancel=()=>{handle.onpointermove=null;};
+  $('.resize').onpointerdown=e=>{e.preventDefault();const r=panel.getBoundingClientRect();place(panel,r.left,r.top);const start={x:e.clientX,y:e.clientY,w:r.width,h:r.height};const handle=e.currentTarget;handle.setPointerCapture(e.pointerId);
+    handle.onpointermove=e=>setSize(start.w+e.clientX-start.x,start.h+e.clientY-start.y);
+    handle.onpointerup=()=>{handle.onpointermove=null;saveSize();savePosition(panel,'panelPosition');};handle.onpointercancel=()=>{handle.onpointermove=null;saveSize();savePosition(panel,'panelPosition');};
   };
   $('.resize').onkeydown=e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();setSize(panel.offsetWidth+(e.key==='ArrowLeft'?20:e.key==='ArrowRight'?-20:0),panel.offsetHeight+(e.key==='ArrowUp'?20:e.key==='ArrowDown'?-20:0));saveSize();};
+  function savePosition(el,key){const r=el.getBoundingClientRect();chrome.storage.local.set({[key]:{x:r.left,y:r.top}}).catch(e=>toast(e.message));}
+  function draggable(handle,el,key){let suppress=false;
+    handle.addEventListener('click',e=>{if(suppress){e.preventDefault();e.stopImmediatePropagation();suppress=false;}},true);
+    handle.addEventListener('pointerdown',e=>{if(e.button!==0||(handle!==el&&e.target.closest('button')))return;
+      suppress=false;const r=el.getBoundingClientRect(),x=e.clientX,y=e.clientY;let moved=false;handle.setPointerCapture(e.pointerId);
+      handle.onpointermove=ev=>{if(!moved&&Math.hypot(ev.clientX-x,ev.clientY-y)<5)return;moved=true;ev.preventDefault();place(el,r.left+ev.clientX-x,r.top+ev.clientY-y);};
+      const end=()=>{handle.onpointermove=null;suppress=moved;if(moved)savePosition(el,key);};handle.onpointerup=end;handle.onpointercancel=end;
+    });
+  }
+  draggable($('.launcher'),$('.launcher'),'launcherPosition');draggable($('header'),panel,'panelPosition');
+  chrome.storage.local.get(['launcherPosition','panelPosition']).then(saved=>{for(const [key,el] of [['launcherPosition',$('.launcher')],['panelPosition',panel]]){const p=saved[key];if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y)){el.style.left=Math.max(8,Math.min(innerWidth-80,p.x))+'px';el.style.top=Math.max(8,Math.min(innerHeight-60,p.y))+'px';el.style.right='auto';el.style.bottom='auto';if(!el.hidden)place(el,p.x,p.y);}}}).catch(()=>{});
+  new ResizeObserver(()=>{if(!panel.hidden&&panel.style.left){const r=panel.getBoundingClientRect();place(panel,r.left,r.top);}}).observe(panel);
+  window.addEventListener('resize',()=>{for(const el of [panel,$('.launcher')])if(!el.hidden){const r=el.getBoundingClientRect();place(el,r.left,r.top);}});
   async function rpc(type, data={}) { const r = await chrome.runtime.sendMessage({type,...data}); if (!r?.ok) throw Error(r?.error || '扩展连接已失效，请刷新页面。'); return r.data; }
   function toast(text) { $('.toast').textContent=text; $('.toast').hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('.toast').hidden=true,4500); }
   function node(tag, cls, text) { const n=document.createElement(tag); if(cls)n.className=cls; if(text!==undefined)n.textContent=text; return n; }
@@ -97,12 +111,21 @@
     for(const m of n.messages){const box=node('div','message '+m.role);box.append(node('div','role',m.role==='user'?'你':'MARGIN'),node('div','',m.content));body.append(box);}
     const webPending=n.webTurns?.find(t=>['prepared','waiting'].includes(t.status));
     const pending=(n.pending && Date.now()-n.pending.started<120000)||webPending;
-    if(pending)body.append(node('p','hint','正在理解这段文字…'));
+    if(pending)body.append(node('p','hint',webPending?'等待网页发送或回答完成；请勿重复提交。':'正在生成回答…'));
     if(n.error || (n.pending&&!pending))body.append(node('div','error',n.error||'上次请求已中断，请重新发送问题。'));
     if(webPending){
+      const pair=MarginWeb.findPair(webPending);
+      const phase=node('p','hint',phaseText(pair));phase.id='web-phase';body.append(phase);
       const collect=node('button','quiet','回答已完成，手动收进旁注');collect.onclick=async()=>{const pair=MarginWeb.findPair(webPending);if(!pair?.text||MarginWeb.generating()){toast('尚未找到已完成的对应回答，请等待网页生成结束。');return;}try{await rpc('webUpdate',{id:n.id,exchangeId:webPending.id,status:'complete',answer:pair.text});}catch(e){toast(e.message);}};body.append(collect);
       const cancel=node('button','quiet','结束等待（保留网页原始问答）');cancel.onclick=async()=>{try{await rpc('webUpdate',{id:n.id,exchangeId:webPending.id,status:'cancelled',error:'已结束自动等待，原始问答保留在主聊天。'});}catch(e){toast(e.message);}};body.append(cancel);
       body.append(node('p','hint','刷新后会恢复等待，不会自动重发。如果网页中没有发送，请检查主输入框；如果发送过，不要重复点击。'));
+    }
+    for(const ex of n.webTurns||[]){
+      if(!['cancelled','failed'].includes(ex.status))continue;
+      const recover=node('button','quiet','收录已完成的网页回答：'+ex.question.slice(0,35));
+      recover.onclick=async()=>{const pair=MarginWeb.findPair(ex);if(!pair?.text||MarginWeb.generating()){toast('尚未定位对应的完整回答。请滚动加载这组网页问答，等生成结束后重试。');return;}
+        try{await rpc('webCollect',{id:n.id,exchangeId:ex.id,status:'complete',answer:pair.text});await refresh();}catch(e){toast(e.message);}};
+      body.append(recover);
     }
     const del=node('button','quiet','删除这条旁注');del.onclick=async()=>{if(!confirm('删除这条旁注及其全部追问？'))return;try{await rpc('delete',{id:n.id});notes=notes.filter(x=>x.id!==n.id);drafts.delete(n.id);active=null;showList();}catch(e){toast(e.message);}};body.append(del);
     form.querySelector('button').disabled=!!pending; input.disabled=!!pending;body.scrollTop=body.scrollHeight;
@@ -148,7 +171,7 @@
     let el=r?.startContainer; if(el?.nodeType===3)el=el.parentElement;
     const path=[];
     for(let i=0;el&&i<5;i++,el=el.parentElement)path.push(el.tagName.toLowerCase()+Array.from(el.classList||[]).slice(0,3).map(c=>'.'+c).join(''));
-    $('#diagnostics').textContent=`版本 0.2.3 · 正文区块 ${all.length} · 选中字数 ${sel?.toString().length||0}\n选区匹配：${r&&all.some(x=>x.contains(r.startContainer)&&x.contains(r.endContainer))?'是':'否'} · 聊天路径：${conversation?'已识别':'未识别'}\n结构：${path.join(' > ')||'无选区'}`;
+    $('#diagnostics').textContent=`版本 0.2.4 · 正文区块 ${all.length} · 选中字数 ${sel?.toString().length||0}\n选区匹配：${r&&all.some(x=>x.contains(r.startContainer)&&x.contains(r.endContainer))?'是':'否'} · 聊天路径：${conversation?'已识别':'未识别'}\n结构：${path.join(' > ')||'无选区'}`;
     $('#diagnostics').textContent+='\n'+MarginWeb.diagnostics();
     $('#diagnostics').style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;max-height:230px;overflow:auto;user-select:text';
   };
@@ -173,11 +196,13 @@
       await refresh();
     }catch(err){drafts.set(id,question);if(active===id)input.value=question;toast(err.message);$('#diagnose').onclick();await refresh();}
   };
+  function phaseText(pair){return !pair?'尚未定位已发送的问题。':!pair.assistant?'已定位问题，等待对应回答。':MarginWeb.generating()?'已定位回答，网页仍在生成。':MarginWeb.hasCompletionSignal(pair)?'已定位回答，等待内容稳定后收录。':'已定位回答，但未识别完成标记；确认网页回答结束后可手动收录。';}
   async function reconcile(){
     if(reconciling)return;reconciling=true;
     try{for(const note of notes)for(const ex of note.webTurns||[]){
       if(!['prepared','waiting'].includes(ex.status))continue;
       const pair=MarginWeb.findPair(ex);
+      if(active===note.id&&$('#web-phase')){const text=phaseText(pair);if($('#web-phase').textContent!==text)$('#web-phase').textContent=text;}
       const busy=MarginWeb.generating();
       const track=observed.get(ex.id)||{text:'',since:Date.now(),sawBusy:false};
       if(busy)track.sawBusy=true;
