@@ -18,7 +18,7 @@
   <button class="pick" hidden>✦ 追问这段</button>
   <section class="panel" hidden role="dialog" aria-label="Margin 旁注">
     <button class="resize" aria-label="调整窗口大小" title="拖动左上角调整大小；方向键也可调整">◩</button>
-    <header><button id="back" aria-label="返回旁注列表">←</button><div><div class="eyebrow">MARGIN / 旁注 · 0.2.1</div><strong id="title">留住每一次理解</strong></div><div style="flex:1"></div><button id="settings" aria-label="设置">⚙</button><button id="close" aria-label="关闭旁注">✕</button></header>
+    <header><button id="back" aria-label="返回旁注列表">←</button><div><div class="eyebrow">MARGIN / 旁注 · 0.2.2</div><strong id="title">留住每一次理解</strong></div><div style="flex:1"></div><button id="settings" aria-label="设置">⚙</button><button id="close" aria-label="关闭旁注">✕</button></header>
     <div style="padding:8px 18px;border-bottom:1px solid #e4e7df"><button id="ask-selection" class="primary">追问当前选区</button> <button id="diagnose" class="quiet">检查选区</button><div id="diagnostics" class="hint" role="status" style="white-space:pre-wrap;overflow-wrap:anywhere"></div></div>
     <div class="body"></div><form class="composer" hidden><textarea maxlength="6000" placeholder="这段哪里不明白？试着问一个问题…" aria-label="你的追问"></textarea><div class="foot"><span class="hint">Ctrl / ⌘ + Enter 发送</span><button class="primary" type="submit">发送 ↗</button></div></form>
   </section><div class="toast" role="status" hidden></div>`;
@@ -148,7 +148,9 @@
     let el=r?.startContainer; if(el?.nodeType===3)el=el.parentElement;
     const path=[];
     for(let i=0;el&&i<5;i++,el=el.parentElement)path.push(el.tagName.toLowerCase()+Array.from(el.classList||[]).slice(0,3).map(c=>'.'+c).join(''));
-    $('#diagnostics').textContent=`版本 0.2.1 · 正文区块 ${all.length} · 选中字数 ${sel?.toString().length||0}\n选区匹配：${r&&all.some(x=>x.contains(r.startContainer)&&x.contains(r.endContainer))?'是':'否'} · 聊天路径：${conversation?'已识别':'未识别'}\n结构：${path.join(' > ')||'无选区'}`;
+    $('#diagnostics').textContent=`版本 0.2.2 · 正文区块 ${all.length} · 选中字数 ${sel?.toString().length||0}\n选区匹配：${r&&all.some(x=>x.contains(r.startContainer)&&x.contains(r.endContainer))?'是':'否'} · 聊天路径：${conversation?'已识别':'未识别'}\n结构：${path.join(' > ')||'无选区'}`;
+    $('#diagnostics').textContent+='\n'+MarginWeb.diagnostics();
+    $('#diagnostics').style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;max-height:230px;overflow:auto;user-select:text';
   };
   document.addEventListener('keydown',e=>{if(e.altKey&&e.shiftKey&&e.code==='KeyM'&&!e.repeat){e.preventDefault();if(capture(true))createSelected();}},true);
   document.addEventListener('click',e=>{if(e.composedPath().includes(host)||getSelection()?.toString())return;for(const hit of ranges){if([...hit.range.getClientRects()].some(r=>e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom)){e.preventDefault();openNote(hit.id);break;}}});
@@ -169,7 +171,7 @@
         catch(err){await rpc('webUpdate',{id,exchangeId:started.exchange.id,status:'waiting',error:err.message});toast(err.message);}
       }else await rpc('ask',{id,question});
       await refresh();
-    }catch(err){drafts.set(id,question);if(active===id)input.value=question;toast(err.message);await refresh();}
+    }catch(err){drafts.set(id,question);if(active===id)input.value=question;toast(err.message);$('#diagnose').onclick();await refresh();}
   };
   async function reconcile(){
     if(reconciling)return;reconciling=true;

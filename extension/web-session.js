@@ -21,6 +21,21 @@
     if (!all.length) all=[...document.querySelectorAll('[data-message-author-role]')].filter(n=>!n.closest('#margin-root'));
     return all;
   }
+  function diagnostics() {
+    // Structural metadata only: do not copy message text, IDs, URLs or input values.
+    const shape=el=>el.tagName.toLowerCase()+[...el.classList].slice(0,4).map(c=>'.'+c).join('')+
+      [...el.attributes].filter(a=>a.name.startsWith('data-')||a.name==='role').map(a=>'['+a.name+']').join('');
+    const blocks=[...document.querySelectorAll(BODY)].filter(n=>!n.closest('#margin-root, [contenteditable="true"]'));
+    const paths=blocks.slice(-2).map((block,i)=>{
+      const lines=[];let el=block;
+      for(let depth=0;el&&depth<12;depth++,el=el.parentElement){
+        lines.push('  '.repeat(depth)+shape(el));
+        if(el===document.body)break;
+      }
+      return '正文容器 '+(i+1)+'：\n'+lines.join('\n');
+    });
+    return `消息容器 ${turns().length} · 输入框 ${composer()?'已识别':'未识别'} · 发送按钮 ${sendButton()?'已识别':'未识别（空草稿时可能正常）'}\n`+paths.join('\n');
+  }
   function turnText(turn) {
     const nodes=[...turn.querySelectorAll(BODY)];
     const outer=nodes.filter(n=>!nodes.some(other=>other!==n&&other.contains(n)));
@@ -90,5 +105,5 @@
     }
   }
   function clearFolds(){restoreFolds([],()=>{});}
-  globalThis.MarginWeb={makePrompt,checkReady,send,findPair,generating,hasCompletionSignal,restoreFolds,clearFolds,normalize};
+  globalThis.MarginWeb={makePrompt,checkReady,send,findPair,generating,hasCompletionSignal,restoreFolds,clearFolds,normalize,diagnostics};
 })();
